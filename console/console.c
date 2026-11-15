@@ -4,7 +4,7 @@
  *                 what it tells the port
  *    Version:     0.1.4
  *    Created:     29-10-2026
- *    Modified:    13-11-2026
+ *    Modified:    15-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
@@ -276,10 +276,14 @@ uint32_t check_game_start(uint32_t mode, uint32_t seat_credits)
 
 	if (console.quit_seats & (1u << screen->index))
 	{
-		/* (the pause's QUIT GAME: a game being played ends, back to the title) */
+		/* (the pause's QUIT GAME: a game being played ends, back to the title, with the sound and the wheel
+		   motor off as the ranking's first step leaves them before the title: game mode 1 does not do it, and
+		   the engine kept its revs and the race's song its sequence, issue 39) */
 		console.quit_seats &= (uint8_t)~(1u << screen->index);
 		if (mode == GAME_MODE_PLAY)
 		{
+			game->wheel_motor[screen->index] = 0u;
+			reset_screen_sound();
 			AS32(screen->game_mode) = GAME_MODE_RESTART;
 			return GAME_MODE_RESTART;
 		}

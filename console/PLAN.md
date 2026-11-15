@@ -526,6 +526,16 @@ merged here; this repository adds console/, the ports and their documents.
   scenarios identical, picture and sound; the console's headless game the same before and after on
   tests/console (menu, controls, classic, time_attack, two_players, arcade_niagara, full, reverse: state,
   picture and sound) but OPTIONS' version; the assets pack's version the same.
+
+## Done (15-11-2026)
+
+- The pause's QUIT GAME leaves the race's sound off (issue 39: the engine went on at the title, and the
+  race's song till the menu's): game mode 1 goes to the title without turning it off, which the arcade never
+  needed, as it comes there from the ranking, whose first step does it; check_game_start's QUIT GAME now does
+  what that step does, the wheel motor off and reset_screen_sound (RESTART, which goes through it, too).
+  Checked with the console headless's new --quit N: ARCADE to Niagara, QUIT GAME at frame 6000 with the gas
+  down, the sound the same up to it and then silent from frame 6100 (it went on before); tests/console the
+  same before and after (state, picture and sound).
 ## To do
 
 - REVERSE's finish (AUSTRALIA's at the pre-stage): the pair of kangaroos under the riders at each side of
