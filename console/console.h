@@ -3,7 +3,7 @@
  *    Description: what the console build tells the port
  *    Version:     0.1.5
  *    Created:     29-10-2026
- *    Modified:    13-11-2026
+ *    Modified:    15-11-2026
  *    Author:      Sebastian Toyos
  */
 #ifndef ORUNNERS_CONSOLE_H
@@ -166,6 +166,8 @@ enum
 	WIDE_20_9,          /* 88 more at each side (S32_VIDEO_WIDE_SIDE_20_9): a phone's screen */
 	WIDE_16_10,         /* 32 more at each side (S32_VIDEO_WIDE_SIDE_16_10): a Steam Deck's (after the others:
 	                       outrunners.ini keeps the number) */
+	WIDE_AUTO,          /* the one the screen's shape asks for (console_set_screen_wide): a computer's default, a
+	                       Steam Deck's 16:10 in its hands and 16:9 on a TV (issue 40) */
 	WIDE_KINDS
 };
 
@@ -221,6 +223,11 @@ extern console_window console_window_settings;
 /* WIDE draws the frames wider (s32_video_set_wide_side): the columns more at each side, or 0 (WIDE off, or
    2 PLAYERS, whose screens are both the board's) */
 int console_wide_side(void);
+
+/* WIDE AUTO: the port says which WIDE the screen's shape asks for (WIDE_OFF till it does), and the one in effect
+   is that one with AUTO, else the setting (what draws and sizes the picture reads this, not the setting) */
+void console_set_screen_wide(int kind);
+int console_wide_in_effect(void);
 
 /* The folder TIME ATTACK keeps its ghosts in (ghost_0.bin to ghost_9.bin, a goal each), with its separator */
 void console_ghost_folder(const char *folder);

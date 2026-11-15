@@ -536,6 +536,14 @@ merged here; this repository adds console/, the ports and their documents.
   Checked with the console headless's new --quit N: ARCADE to Niagara, QUIT GAME at frame 6000 with the gas
   down, the sound the same up to it and then silent from frame 6100 (it went on before); tests/console the
   same before and after (state, picture and sound).
+- OPTIONS > VIDEO > WIDE AUTO, the computers' default (issue 40, as the Simpsons port's): WIDE as the shape of
+  the screen the window is on asks (wide_for_screen, Android's: 20:9, 16:9, 16:10 or off), chosen again where
+  it changes, every frame (a Steam Deck's 16:10 in its hands, 16:9 docked to a TV; the window on another
+  monitor), the window sized again for it; what draws and sizes the picture reads console_wide_in_effect.
+  outrunners.ini keeps 4 for it; a file that says another keeps it. Checked on Windows (a 3072 x 1728
+  monitor): a first start in AUTO, "screen 3072x1728: WIDE AUTO -> 16:9" and the window 796 x 448; with
+  wide=0 the window 640 x 448; VIDEO shows AUTO, then OFF; tests/console the same but menu's VIDEO page, WIDE's
+  line AUTO. Not tried on a Steam Deck, a 16:10 screen or with two monitors.
 ## To do
 
 - REVERSE's finish (AUSTRALIA's at the pre-stage): the pair of kangaroos under the riders at each side of

@@ -468,11 +468,27 @@ void console_attach(void)
 	s32_video_use_extra_palette(true);    /* (REVERSE's start line) */
 }
 
+static int screen_wide;    /* WIDE AUTO's, as the port says the screen is (WIDE_OFF till it does) */
+
+void console_set_screen_wide(int kind)
+{
+	screen_wide = kind > WIDE_OFF && kind < WIDE_AUTO ? kind : WIDE_OFF;
+}
+
+int console_wide_in_effect(void)
+{
+	const int wide = console_window_settings.wide;
+
+	if (wide == WIDE_AUTO)
+		return screen_wide;
+	return wide > WIDE_OFF && wide < WIDE_AUTO ? wide : WIDE_OFF;
+}
+
 int console_wide_side(void)
 {
 	if (console.two_players)
 		return 0;    /* (2 PLAYERS: both screens alike) */
-	switch (console_window_settings.wide)
+	switch (console_wide_in_effect())
 	{
 		case WIDE_16_10: return S32_VIDEO_WIDE_SIDE_16_10;
 		case WIDE_16_9: return S32_VIDEO_WIDE_SIDE_16_9;

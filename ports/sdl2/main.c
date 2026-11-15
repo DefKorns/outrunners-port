@@ -4,7 +4,7 @@
  *                 keeps the pace, around the same game and board the headless runs check
  *    Version:     0.1.4
  *    Created:     21-10-2026
- *    Modified:    13-11-2026
+ *    Modified:    15-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
@@ -326,11 +326,13 @@ static bool screens_stacked(void)
 static int screen_width(void)
 {
 #ifdef ORUNNERS_CONSOLE
-	if (console_window_settings.wide == WIDE_16_10)
+	const int wide = console_wide_in_effect();
+
+	if (wide == WIDE_16_10)
 		return WIDE_16_10_WIDTH;
-	if (console_window_settings.wide == WIDE_16_9)
+	if (wide == WIDE_16_9)
 		return WIDE_16_9_WIDTH;
-	if (console_window_settings.wide == WIDE_20_9)
+	if (wide == WIDE_20_9)
 		return WIDE_20_9_WIDTH;
 #endif
 	return 320;
@@ -348,7 +350,14 @@ static void picture_size(int *width, int *height)
    mid-game, a Fold opened or closed (Sebas): WIDE is chosen again then, the picture's new width from the next
    frame (on_controls_update sees it) */
 #define WIDE_BY_SCREEN
+#elif defined(ORUNNERS_CONSOLE) && !defined(ORUNNERS_HANDHELD)
+/* A computer's OPTIONS > VIDEO > WIDE AUTO (issue 40): WIDE as the shape of the screen the window is on asks,
+   chosen again where it changes, a Steam Deck's 16:10 in its hands and 16:9 docked to a TV, as the Simpsons
+   port's; the window sized again for it */
+#define WIDE_AUTO_BY_SCREEN
+#endif
 
+#if defined(WIDE_BY_SCREEN) || defined(WIDE_AUTO_BY_SCREEN)
 static int shape_width, shape_height;    /* the screen WIDE was last chosen for */
 
 /* WIDE for a screen of 'width' x 'height' (either way up: its long side across): 20:9 where it is twice as wide
@@ -361,11 +370,22 @@ static int wide_for_screen(int width, int height)
 
 	if (long_side >= 2 * short_side)
 		return WIDE_20_9;
+#ifdef ORUNNERS_TOUCH
 	if (9 * long_side >= 16 * short_side || tablet_screen(width, height))
+#else
+	if (9 * long_side >= 16 * short_side)
+#endif
 		return WIDE_16_9;
 	return 2 * long_side >= 3 * short_side ? WIDE_16_10 : WIDE_OFF;
 }
 
+static const char *wide_name(int wide)
+{
+	return wide == WIDE_20_9 ? "20:9" : wide == WIDE_16_9 ? "16:9" : wide == WIDE_16_10 ? "16:10" : "OFF";
+}
+#endif
+
+#ifdef WIDE_BY_SCREEN
 /* The screen's size at a frame, as the renderer has it: WIDE chosen again where it changed (the log says so) */
 static void follow_screen(int width, int height)
 {
@@ -374,9 +394,45 @@ static void follow_screen(int width, int height)
 	shape_width = width;
 	shape_height = height;
 	console_window_settings.wide = wide_for_screen(width, height);
-	fprintf(stderr, "screen %dx%d: WIDE %s\n", width, height, console_window_settings.wide == WIDE_20_9 ? "20:9"
-		: console_window_settings.wide == WIDE_16_9 ? "16:9" : console_window_settings.wide == WIDE_16_10 ? "16:10"
-		: "OFF");
+	fprintf(stderr, "screen %dx%d: WIDE %s\n", width, height, wide_name(console_window_settings.wide));
+}
+#endif
+
+#ifdef WIDE_AUTO_BY_SCREEN
+/* The screen's shape: full screen, the renderer's whole output; in a window, the desktop's mode of the display
+   the window is on (the monitor's) */
+static void screen_shape(int *width, int *height)
+{
+	SDL_DisplayMode mode;
+
+	*width = *height = 0;
+	if (window && !(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN)
+		&& SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(window), &mode) == 0)
+	{
+		*width = mode.w;
+		*height = mode.h;
+		return;
+	}
+	if (renderer)
+		SDL_GetRendererOutputSize(renderer, width, height);
+}
+
+/* WIDE AUTO's chosen again where the screen's shape changed (the log says so); the window sized again for it, as
+   for a setting changed (apply_window_settings), where the WIDE in effect changed */
+static void follow_screen(void)
+{
+	const int before = console_wide_in_effect();
+	int width, height;
+
+	screen_shape(&width, &height);
+	if (width <= 0 || height <= 0 || (width == shape_width && height == shape_height))
+		return;
+	shape_width = width;
+	shape_height = height;
+	console_set_screen_wide(wide_for_screen(width, height));
+	fprintf(stderr, "screen %dx%d: WIDE AUTO -> %s\n", width, height, wide_name(wide_for_screen(width, height)));
+	if (console_wide_in_effect() != before)
+		console_window_settings.changed = true;
 }
 #endif
 
@@ -612,6 +668,8 @@ static void present(SDL_Rect source)
 	SDL_GetRendererOutputSize(renderer, &out_width, &out_height);
 #ifdef WIDE_BY_SCREEN
 	follow_screen(out_width, out_height);    /* (a Fold opened or closed: its WIDE, from the next frame) */
+#elif defined(WIDE_AUTO_BY_SCREEN)
+	follow_screen();    /* (the window on another monitor, a Steam Deck docked: WIDE AUTO's, from the next frame) */
 #endif
 	scale = SDL_min((double)out_width / source.w, (double)out_height / source.h);
 	shown[0].w = (int)(source.w * scale);
@@ -990,7 +1048,7 @@ static void load_window_settings(void)
 		else if (sscanf(line, "full_screen=%d", &number) == 1)
 			settings->full_screen = number != 0;
 		else if (sscanf(line, "wide=%d", &number) == 1 && number >= 0 && number < WIDE_KINDS)
-			settings->wide = number;    /* (0 off, 1 16:9, 2 20:9) */
+			settings->wide = number;    /* (0 off, 1 16:9, 2 20:9, 3 16:10, 4 AUTO) */
 		else if (sscanf(line, "vsync=%d", &number) == 1)
 			settings->vsync = number != 0;
 		else if (sscanf(line, "volume=%d", &number) == 1 && number >= 0 && number <= 10)
@@ -2452,6 +2510,10 @@ int main(int argc, char **argv)
 		screens_shown() * 320 * WINDOW_SCALE, S32_VIDEO_HEIGHT * WINDOW_SCALE, SDL_WINDOW_RESIZABLE);
 #endif
 #ifdef ORUNNERS_CONSOLE
+#ifdef WIDE_AUTO_BY_SCREEN
+	if (window)
+		follow_screen();    /* (WIDE AUTO's before the window is sized: the first frame at its width) */
+#endif
 	if (window)
 		apply_window_settings();
 #endif
