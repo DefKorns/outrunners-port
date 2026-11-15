@@ -100,12 +100,22 @@
 #if defined(ORUNNERS_HANDHELD) && !defined(_WIN32) && !defined(__SWITCH__)
 #include <unistd.h>        /* fsync: the log on the card as it is written */
 #endif
+#ifndef ORUNNERS_HANDHELD
+#ifdef _WIN32
+#include <io.h>            /* _isatty: the log, unless a terminal shows what the game says */
+#define STDERR_TERMINAL()  (_isatty(_fileno(stderr)) != 0)
+#else
+#include <unistd.h>        /* isatty */
+#define STDERR_TERMINAL()  (isatty(fileno(stderr)) != 0)
+#endif
+#endif
 
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #if defined(__ANDROID__) && defined(ORUNNERS_CONSOLE)
 static void android_multicast_lock(bool wanted);
@@ -776,6 +786,7 @@ typedef struct
 {
 	int what;      /* an SDL_Scancode or an SDL_GameControllerButton */
 	uint8_t row, column, tiles;    /* where in the sheet, and how many tiles wide */
+	uint8_t over;  /* a tile of the same row drawn over it (the rest of PlayStation's symbols), or 0 */
 } prompt;
 
 static const prompt key_prompts[] = {
@@ -826,6 +837,15 @@ static const prompt button_prompts[] = {
 	{ SDL_CONTROLLER_BUTTON_GUIDE, 18, 2, 1 }, { SDL_CONTROLLER_BUTTON_MISC1, 18, 6, 1 },
 };
 
+/* A DualShock's or a DualSense's own, where they differ: cross, circle, square and triangle (each its button and
+   the tile with the rest of its symbol, as the sheet has them), L1, R1, L2 and R2 */
+static const prompt playstation_prompts[] = {
+	{ SDL_CONTROLLER_BUTTON_A, 16, 23, 1, 24 }, { SDL_CONTROLLER_BUTTON_B, 16, 19, 1, 20 },
+	{ SDL_CONTROLLER_BUTTON_X, 16, 21, 1, 22 }, { SDL_CONTROLLER_BUTTON_Y, 16, 17, 1, 18 },
+	{ SDL_CONTROLLER_BUTTON_LEFTSHOULDER, 18, 19, 1 }, { SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, 18, 20, 1 },
+	{ CONTROL_LEFT_TRIGGER, 18, 17, 1 }, { CONTROL_RIGHT_TRIGGER, 18, 18, 1 },
+};
+
 #define PROMPT_SIZE  16
 #define PROMPT_CLEAR 0xFFFF00FFu    /* magenta: the sheet's see-through */
 
@@ -853,28 +873,55 @@ static const prompt *find_prompt(const prompt *list, size_t count, int what)
 	return NULL;
 }
 
-/* One prompt into the picture, its top left at (x, y) */
+/* One prompt into the picture, its top left at (x, y): its tiles, and the one over them where it has one */
 static void draw_prompt(const prompt *icon, int x, int y)
 {
 	const uint32_t *sheet = (const uint32_t *)prompt_sheet->pixels;
 	const int pitch = prompt_sheet->pitch / 4;
 
-	for (int row = 0; row < PROMPT_SIZE; row++)
-		for (int column = 0; column < PROMPT_SIZE * icon->tiles; column++)
-		{
-			const uint32_t color = sheet[(icon->row * PROMPT_SIZE + row) * pitch + icon->column * PROMPT_SIZE + column];
+	for (int layer = 0; layer < (icon->over ? 2 : 1); layer++)
+	{
+		const int from = layer == 0 ? icon->column : icon->over;
 
-			if ((color | 0xFF000000u) == PROMPT_CLEAR || y + row < 0 || y + row >= S32_VIDEO_HEIGHT
-				|| x + column >= S32_VIDEO_MAX_WIDTH)
-				continue;
-			controls_picture[(y + row) * S32_VIDEO_MAX_WIDTH + x + column] = color | 0xFF000000u;
-		}
+		for (int row = 0; row < PROMPT_SIZE; row++)
+			for (int column = 0; column < PROMPT_SIZE * (layer == 0 ? icon->tiles : 1); column++)
+			{
+				const uint32_t color = sheet[(icon->row * PROMPT_SIZE + row) * pitch + from * PROMPT_SIZE + column];
+
+				if ((color | 0xFF000000u) == PROMPT_CLEAR || y + row < 0 || y + row >= S32_VIDEO_HEIGHT
+					|| x + column >= S32_VIDEO_MAX_WIDTH)
+					continue;
+				controls_picture[(y + row) * S32_VIDEO_MAX_WIDTH + x + column] = color | 0xFF000000u;
+			}
+	}
+}
+
+/* The player's game controller's buttons as its own: PlayStation's symbols for a DualShock or a DualSense (SDL's
+   type of it), else the letters; with no controller, RecompLauncher's RECOMPLAUNCHER_PAD ("playstation" or
+   "xbox", the player's) says which. A device's are its own buttons, the letters */
+static bool playstation_buttons(int player)
+{
+#ifndef ORUNNERS_HANDHELD
+	const char *pad = SDL_getenv("RECOMPLAUNCHER_PAD");
+
+	if (player >= 0 && player < PLAYERS && controllers[player])
+	{
+		const SDL_GameControllerType type = SDL_GameControllerGetType(controllers[player]);
+
+		return type == SDL_CONTROLLER_TYPE_PS3 || type == SDL_CONTROLLER_TYPE_PS4 || type == SDL_CONTROLLER_TYPE_PS5;
+	}
+	return pad && strcmp(pad, "playstation") == 0;
+#else
+	(void)player;
+	return false;
+#endif
 }
 
 /* The left screen's frame with each of the shown player's controls' keys and first button on its line */
 static const uint32_t *with_controls(const uint32_t *pixels)
 {
 	const control_binding *bindings = control_bindings[console_controls_player()];
+	const bool playstation = playstation_buttons(console_controls_player());
 
 	memcpy(controls_picture, pixels, sizeof(controls_picture));
 	for (int control = 0; control < CONTROLS; control++)
@@ -892,7 +939,9 @@ static const uint32_t *with_controls(const uint32_t *pixels)
 			draw_prompt(icon, x + (shown++ ? CONSOLE_CONTROLS_SECOND_X : 0), y);
 			first = first ? first : icon;
 		}
-		if ((icon = find_prompt(button_prompts, SDL_arraysize(button_prompts), bindings[control].buttons[0])) != NULL)
+		icon = playstation ? find_prompt(playstation_prompts, SDL_arraysize(playstation_prompts), bindings[control].buttons[0])
+			: NULL;
+		if (icon || (icon = find_prompt(button_prompts, SDL_arraysize(button_prompts), bindings[control].buttons[0])) != NULL)
 			draw_prompt(icon, x + CONSOLE_CONTROLS_BUTTON_X, y);
 	}
 	return controls_picture;
@@ -2128,10 +2177,13 @@ static int prepare(int argc, char **argv)
 }
 #endif
 
+static int app_folder(const char *base, char *folder, size_t size);
+
 /* Where the game keeps what it writes (the EEPROM, the sound RAM's bookkeeping): beside the executable on
    Windows; elsewhere the user's own folder for the game (SDL_GetPrefPath: ~/.local/share/OutRunners,
-   ~/Library/Application Support/OutRunners), as the executable's may not be written (an .app, /usr/bin).
-   The caller frees it (SDL_free) */
+   ~/Library/Application Support/OutRunners), as the executable's may not be written (an .app, /usr/bin),
+   but beside the game (beside the .app on macOS) where a file portable.txt is there, as on Windows (a
+   launcher's saves and mods follow it). The caller frees it (SDL_free) */
 static char *saves_folder(void)
 {
 #ifdef __SWITCH__
@@ -2142,9 +2194,60 @@ static char *saves_folder(void)
 #elif defined(_WIN32) || defined(ORUNNERS_HANDHELD)
 	return SDL_GetBasePath();    /* (a handheld's: the game's folder on its card) */
 #else
+	char *base = SDL_GetBasePath(), beside_app[1024], probe[1100];
+	const char *folder = base && app_folder(base, beside_app, sizeof(beside_app)) ? beside_app : base;
+	FILE *portable;
+
+	snprintf(probe, sizeof(probe), "%sportable.txt", folder ? folder : "");
+	if (folder && (portable = fopen(probe, "rb")) != NULL)
+	{
+		char *kept = SDL_strdup(folder);
+
+		fclose(portable);
+		SDL_free(base);
+		return kept;
+	}
+	SDL_free(base);
 	return SDL_GetPrefPath("", "OutRunners");
 #endif
 }
+
+#ifndef ORUNNERS_HANDHELD
+#define LOGS_KEPT 3    /* FILE_NAME.log, .1.log and .2.log: this run's and the two before */
+
+/* What the game says (stderr) into FILE_NAME.log in the folder of what it keeps, the runs before beside it
+   (FILE_NAME.1.log, .2.log), for a player to send (RecompLauncher's crash reports take it: recomplauncher.json's
+   folder 'logs'); left on a terminal where the game was started from one */
+static void start_log(void)
+{
+	char *folder, path[1100], older[1100], when[32];
+	const time_t now = time(NULL);
+
+	if (STDERR_TERMINAL() || (folder = saves_folder()) == NULL)
+		return;
+	for (int run = LOGS_KEPT - 1; run > 0; run--)
+	{
+		if (run == 1)
+			snprintf(path, sizeof(path), "%s" FILE_NAME ".log", folder);
+		else
+			snprintf(path, sizeof(path), "%s" FILE_NAME ".%d.log", folder, run - 1);
+		snprintf(older, sizeof(older), "%s" FILE_NAME ".%d.log", folder, run);
+		remove(older);
+		rename(path, older);
+	}
+	snprintf(path, sizeof(path), "%s" FILE_NAME ".log", folder);
+	SDL_free(folder);
+	if (!freopen(path, "w", stderr))
+		return;
+	setvbuf(stderr, NULL, _IONBF, 0);    /* (all of it, if the game ends badly) */
+	strftime(when, sizeof(when), "%Y-%m-%d %H:%M:%S", localtime(&now));
+#ifdef ORUNNERS_VERSION
+	fprintf(stderr, "%s %s, %s\n", TITLE, ORUNNERS_VERSION, when);
+#else
+	fprintf(stderr, "%s, %s\n", TITLE, when);
+#endif
+}
+#endif
 
 #ifndef ORUNNERS_HANDHELD
 /* gamecontrollerdb.txt in the folder of what the game keeps: game controller layouts in SDL's format, a line
@@ -2343,6 +2446,7 @@ int main(int argc, char **argv)
 	for (int index = 1; index < argc; index++)
 		if (strcmp(argv[index], "--prepare") == 0)
 			return prepare(argc, argv);    /* (no window, no SDL: the assets alone) */
+	start_log();
 #endif
 
 #ifdef __SWITCH__
@@ -2439,6 +2543,15 @@ int main(int argc, char **argv)
 	load_window_settings();
 #ifdef ORUNNERS_HANDHELD
 	fix_window_settings();
+#else
+	{
+		/* RecompLauncher's Big Picture mode (a controller, the couch, a Steam Deck): full screen, whatever
+		   outrunners.ini says, without writing it there (but where OPTIONS changes the settings) */
+		const char *mode = SDL_getenv("RECOMPLAUNCHER_MODE");
+
+		if (mode && strcmp(mode, "bigpicture") == 0)
+			console_window_settings.full_screen = true;
+	}
 #endif
 	{
 		char controls_path[1024];
