@@ -431,6 +431,21 @@ static void on_controls_update(void)
 	for (size_t index = 0; index < action_count; index++)
 		if (actions[index].frame == s32_board.frame)
 			console_actions(actions[index].action);
+	for (int player = 0; player < 2; player++)
+	{
+		/* the radio's << and >> as the window port has them (console_radio_buttons); a button it pressed is let
+		   go again the next frame (the script presses and lets go by its own events alone) */
+		static uint8_t added[2];
+		uint8_t *port = &s32_board.input.port_b[player];
+		bool previous, next;
+
+		*port |= added[player];
+		previous = (*port & 0x02u) == 0u;
+		next = (*port & 0x04u) == 0u;
+		console_radio_buttons(player, &previous, &next);
+		added[player] = (uint8_t)(((*port & 0x02u) != 0u && previous ? 0x02u : 0u) | ((*port & 0x04u) != 0u && next ? 0x04u : 0u));
+		*port &= (uint8_t)~added[player];
+	}
 	s32_video_set_wide_side(console_wide_side());
 	if (autopilot)
 		s32_board.input.analog[0] = (uint8_t)console_test_autopilot();    /* (player 1's wheel) */

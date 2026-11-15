@@ -544,6 +544,12 @@ merged here; this repository adds console/, the ports and their documents.
   monitor): a first start in AUTO, "screen 3072x1728: WIDE AUTO -> 16:9" and the window 796 x 448; with
   wide=0 the window 640 x 448; VIDEO shows AUTO, then OFF; tests/console the same but menu's VIDEO page, WIDE's
   line AUTO. Not tried on a Steam Deck, a 16:10 screen or with two monitors.
+- The radio's hidden song, Jingle Bell (Sebas): the game plays it for << and >> pressed together, which a game
+  controller's pad (both on it) cannot; console_radio_buttons presses the other one with >> past Last Wave and
+  with << before Magical Sound Shower and leaves the car's song at 10, which the game's next << or >> steps
+  from (to Last Wave or Magical Sound Shower). Checked on the console headless (the window port's buttons
+  through it too): TIME ATTACK, >> twelve times and << ten times, the titles going round with Jingle Bell
+  between the two.
 ## To do
 
 - REVERSE's finish (AUSTRALIA's at the pre-stage): the pair of kangaroos under the riders at each side of

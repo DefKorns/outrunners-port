@@ -524,6 +524,33 @@ bool console_can_pause(void)
 		&& !console_network_linked();
 }
 
+/* ---- the radio's hidden song ---- */
+
+#define LAST_RADIO_SONG     9u    /* Last Wave: the game's >> goes on from it to the first, Magical Sound Shower */
+#define FIRST_RADIO_SONG    0u
+#define HIDDEN_RADIO_SONG   10u   /* Jingle Bell, radio_songs' eleventh */
+
+void console_radio_buttons(int player, bool *previous, bool *next)
+{
+	static bool held[CONTROL_PLAYERS][2];    /* the seat's << and >> the frame before */
+	const uint32_t seat = player == 0 ? SCREEN_1 : SCREEN_2;
+	const bool previous_pressed = *previous && !held[player][0], next_pressed = *next && !held[player][1];
+	uint8_t song;
+
+	held[player][0] = *previous;
+	held[player][1] = *next;
+	if (previous_pressed == next_pressed || SCREEN(seat)->game_mode != GAME_MODE_PLAY || !racing(seat))
+		return;
+	song = CAR(seat + SCREEN_CAR)->song;
+	if ((next_pressed && song == LAST_RADIO_SONG) || (previous_pressed && song == FIRST_RADIO_SONG))
+	{
+		/* (both pressed: the game plays Jingle Bell, and leaves the car's song as it was, which its next << or
+		   >> steps from: 10, between Last Wave and Magical Sound Shower) */
+		*previous = *next = true;
+		CAR(seat + SCREEN_CAR)->song = HIDDEN_RADIO_SONG;
+	}
+}
+
 bool console_manual_gears(int player)
 {
 	const uint32_t seat = player == 0 ? SCREEN_1 : SCREEN_2;

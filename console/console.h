@@ -61,6 +61,11 @@ void console_restart_game(void);
    choice): the touch controls' gear buttons are shown then alone */
 bool console_manual_gears(int player);
 
+/* The radio's << and >> of player 'player''s seat, held this frame, before they go to the board: Jingle Bell,
+   the radio's hidden song, which the game plays for both pressed together (a game controller's pad cannot), is
+   reached with >> past Last Wave and with << before Magical Sound Shower (the other one pressed with it) */
+void console_radio_buttons(int player, bool *previous, bool *next);
+
 /* 2 PLAYERS in the title's menu where the build has none (a phone's): the port offers it each frame where it
    can show both players (a tablet's screen, the two facing each other) */
 void console_offer_two_players(bool offered);

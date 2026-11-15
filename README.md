@@ -48,6 +48,8 @@ What a tool makes has the game's data in it: it is yours alone, never share it.
 - **OPTIONS**: controls, difficulty, time, video (window, full screen, sharp, smooth or CRT pixels, a wider
   picture: AUTO, the screen's shape, as a Steam Deck's in its hands or on a TV, or 16:10, 16:9 or 20:9;
   VSYNC), volume, sound test, steering, FPS.
+- **The radio**: << and >> go round its ten songs and Jingle Bell, the hidden one, between Last Wave and
+  Magical Sound Shower.
 - **The pause** in a race: CONTINUE, RESTART, QUIT GAME.
 - **The picture**: the scenery the arcade draws every other frame to make it look faint (the spray of Niagara's
   falls, the pyramids) is drawn see-through instead, so it does not blink.

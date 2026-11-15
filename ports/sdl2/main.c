@@ -1695,6 +1695,7 @@ static void on_controls_update(void)
 		}
 		if (console_can_pause())
 			start[player] = false;    /* (in a race START pauses) */
+		console_radio_buttons(player, &previous[player], &next[player]);    /* (Jingle Bell on the way round) */
 	}
 #endif
 	/* each player's 315-5296 (chip 0 player 1, chip 1 player 2); its ports are active low: a cleared bit
