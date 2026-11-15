@@ -9,7 +9,7 @@
  *
  *    license:BSD-3-Clause
  *    Usage: "OutRunners Arcade" or OutRunners [--script FILE [--fast]] [--hashes FILE] [--video-hashes FILE]
- *                    [--sound-hashes FILE] [--assets FOLDER]
+ *                    [--sound-hashes FILE] [--assets FOLDER] [--game SET] [--prepare --game SET]
  *
  *    The game (src/) and the board (runtime/) run as they are: this file only wraps them. Where the board
  *    has its hooks, the port does its part: when VBLANK starts the video draws both screens and the port
@@ -28,7 +28,11 @@
  *    ROM set: --assets, or the folder 'assets' beside the executable, beside the .app on macOS, in the
  *    folder of what the game keeps, or in the current folder. Where there is none, the first run takes them
  *    out of the ROM set itself into the folder of what the game keeps (first_run.c, runtime/src/extract.c):
- *    orunners.zip or rom/ beside the game or in that folder, or a set dropped on its window.
+ *    orunners.zip or rom/ beside the game or in that folder, or a set dropped on its window. --game SET gives
+ *    it the set (orunners.zip, or a folder of its files) to take them out of first, as a launcher or a
+ *    shortcut can; --prepare --game SET only takes them out, with no window, saying how far it is on the
+ *    standard output ("progress 0.1 Reading the ROM set"), and ends (RecompLauncher's setup step:
+ *    recomplauncher.json). Without them the game starts as before.
  *
  *    The game devices (ORUNNERS_HANDHELD) make nothing from the ROM set: their assets pack (outrunners.assets)
  *    comes with the game, made on a computer, and their picture is fixed (fix_window_settings). On Anbernic's
@@ -157,7 +161,9 @@ static void android_multicast_lock(bool wanted);
 #define BACKUP_RAM_SIZE     0xfa
 
 #define USAGE "Usage: orunners [--script FILE [--fast]] [--hashes FILE] [--video-hashes FILE] [--sound-hashes FILE]" \
-	" [--assets FILE]"
+	" [--assets FILE] [--game SET] [--prepare --game SET]"
+#define PREPARE_NO_SET      2          /* --prepare's end without --game */
+#define PREPARE_NOT_TAKEN   3          /* --prepare's end with a set the assets could not come out of */
 
 static SDL_Window *window;
 static SDL_Renderer *renderer;
@@ -1032,6 +1038,24 @@ static void save_window_settings(void)
 	fclose(output);
 }
 
+/* A line of outrunners.ini as the game writes it, "wide=4", from one with spaces before it or around its '=',
+   "wide = 4", as another program may write it (RecompLauncher's settings: recomplauncher.json) */
+static void tidy_setting(char *line)
+{
+	const size_t lead = strspn(line, " \t");
+	char *equals, *to, *from;
+
+	memmove(line, line + lead, strlen(line + lead) + 1);
+	if ((equals = strchr(line, '=')) == NULL)
+		return;
+	for (to = equals; to > line && (to[-1] == ' ' || to[-1] == '\t'); to--)
+		;
+	for (from = equals + 1; *from == ' ' || *from == '\t'; from++)
+		;
+	*to++ = '=';
+	memmove(to, from, strlen(from) + 1);
+}
+
 static void load_window_settings(void)
 {
 	console_window *settings = &console_window_settings;
@@ -1043,6 +1067,7 @@ static void load_window_settings(void)
 		return;
 	while (fgets(line, sizeof(line), input))
 	{
+		tidy_setting(line);
 		if (sscanf(line, "window_scale=%d", &number) == 1 && number >= 1 && number <= 6)
 			settings->window_scale = number;
 		else if (sscanf(line, "full_screen=%d", &number) == 1)
@@ -2063,6 +2088,46 @@ static FILE *open_hashes(const char *path)
 	return path ? fopen(path, "w") : NULL;
 }
 
+#ifndef ORUNNERS_HANDHELD
+static char *saves_folder(void);
+
+/* --prepare --game SET (RecompLauncher's setup step, recomplauncher.json's prepare): the assets out of the ROM
+   set SET into the folder the first run takes them out to, with no window and before SDL starts, how far it
+   is on the standard output as the launcher reads it; 0 when they came out, PREPARE_NO_SET without --game,
+   PREPARE_NOT_TAKEN with a set they did not come out of (what was wrong, said) */
+static int prepare(int argc, char **argv)
+{
+	const char *set = NULL, *failed;
+	char *base, *saves, folder[1100];
+
+	for (int index = 1; index < argc; index++)
+		if (strcmp(argv[index], "--game") == 0 && index + 1 < argc)
+			set = argv[++index];
+	if (!set)
+	{
+		printf("--prepare takes the ROM set with --game (orunners.zip)\n");
+		return PREPARE_NO_SET;
+	}
+	base = SDL_GetBasePath();
+	saves = saves_folder();
+	snprintf(folder, sizeof(folder), "%sassets", saves ? saves : (base ? base : ""));
+	printf("progress 0.1 Reading the ROM set\n");
+	fflush(stdout);
+	failed = game_assets_extract(set, folder);
+	SDL_free(base);
+	SDL_free(saves);
+	if (failed)
+	{
+		printf("The graphics and sounds did not come out of the ROM set: %s\n", failed);
+		fflush(stdout);
+		return PREPARE_NOT_TAKEN;
+	}
+	printf("progress 1 The graphics and sounds taken out\n");
+	fflush(stdout);
+	return 0;
+}
+#endif
+
 /* Where the game keeps what it writes (the EEPROM, the sound RAM's bookkeeping): beside the executable on
    Windows; elsewhere the user's own folder for the game (SDL_GetPrefPath: ~/.local/share/OutRunners,
    ~/Library/Application Support/OutRunners), as the executable's may not be written (an .app, /usr/bin).
@@ -2272,6 +2337,13 @@ int main(int argc, char **argv)
 	const char *hashes_path = NULL, *video_hashes_path = NULL, *sound_hashes_path = NULL;
 	const char *assets_path = NULL;
 	char *base, *saves;
+#ifndef ORUNNERS_HANDHELD
+	const char *set_path = NULL;    /* --game: the ROM set the first run takes the assets out of first */
+
+	for (int index = 1; index < argc; index++)
+		if (strcmp(argv[index], "--prepare") == 0)
+			return prepare(argc, argv);    /* (no window, no SDL: the assets alone) */
+#endif
 
 #ifdef __SWITCH__
 	romfsInit();
@@ -2329,6 +2401,10 @@ int main(int argc, char **argv)
 			fast = true;
 		else if (strcmp(argv[index], "--assets") == 0 && index + 1 < argc)
 			assets_path = argv[++index];
+#ifndef ORUNNERS_HANDHELD
+		else if (strcmp(argv[index], "--game") == 0 && index + 1 < argc)
+			set_path = argv[++index];
+#endif
 		else
 			return fail("Unknown option.", USAGE);
 	}
@@ -2469,7 +2545,7 @@ int main(int argc, char **argv)
 		{
 			if (!stale)
 				snprintf(folder, sizeof(folder), "%sassets", saves ? saves : (base ? base : ""));
-			if (!first_run(TITLE, base, saves, folder))
+			if (!first_run(TITLE, base, saves, folder, set_path))
 			{
 				/* (the window closed before a ROM set came) */
 				SDL_free(base);
