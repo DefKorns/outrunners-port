@@ -50,9 +50,9 @@ heard is out of the race after 3 seconds, and the race goes on. The game uses UD
 
 The devices
 -----------
-The Nintendo Switch, Android and Anbernic's H700 handhelds have packages of their own on the same release
-page: outrunners-VERSION-switch.zip, outrunners-VERSION-android.zip and outrunners-VERSION-anbernic.zip
-(VERSION is the release's, v1.3.2 say). Each has the device's game without assets and the tool, for
+The Nintendo Switch, Android, Anbernic's H700 handhelds and the R36S on ArkOS have packages of their own on
+the same release page: outrunners-VERSION-switch.zip, outrunners-VERSION-android.zip,
+outrunners-VERSION-anbernic.zip and outrunners-VERSION-r36s.zip (VERSION is the release's, v1.3.2 say). Each has the device's game without assets and the tool, for
 Windows, macOS and Linux, that makes yours on your computer with your ROM set.
 
 Licenses

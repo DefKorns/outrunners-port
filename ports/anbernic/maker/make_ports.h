@@ -2,13 +2,15 @@
  *    Name:        make_ports.h
  *    Description: OutRunners Anbernic's work, for its command line and its window alike: the folder PORTS for
  *                 the handheld's card from its inputs, their defaults, and what the window shows of each
- *    Version:     0.1.0
+ *    Version:     0.2.0
  *    Created:     30-10-2026
- *    Modified:    30-10-2026
+ *    Modified:    15-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
- *    Paths are as the C library's fopen takes them (on Windows, in the system's code page).
+ *    Paths are as the C library's fopen takes them (on Windows, in the system's code page). The same tool
+ *    built with ORUNNERS_R36S_MAKER is OutRunners R36S: the folder ports for the R36S's card (ArkOS), of the
+ *    game's R36S build (ports/r36s); the names below are each one's.
  */
 #ifndef ORUNNERS_ANBERNIC_MAKE_PORTS_H
 #define ORUNNERS_ANBERNIC_MAKE_PORTS_H
@@ -17,7 +19,26 @@
 #include <stdio.h>
 
 #define PORTS_PATH_SIZE 1100
-#define PORTS_FOLDER    "PORTS"
+
+/* The tool's device: its name, the handheld's, the game's build beside it (its folder, what it is called, and
+   the room after its option in the usage), the folder made and where it goes on the card */
+#ifdef ORUNNERS_R36S_MAKER
+#define PORTS_TOOL      "OutRunners R36S"
+#define PORTS_HANDHELD  "the R36S on ArkOS"
+#define PORTS_BUILD     "r36s"
+#define PORTS_BUILD_OF  "R36S"
+#define PORTS_BUILD_PAD "    "
+#define PORTS_FOLDER    "ports"       /* (ArkOS's, at the top of the card's EASYROMS) */
+#define PORTS_CARD      "EASYROMS"
+#else
+#define PORTS_TOOL      "OutRunners Anbernic"
+#define PORTS_HANDHELD  "Anbernic's H700 handhelds"
+#define PORTS_BUILD     "anbernic"
+#define PORTS_BUILD_OF  "Anbernic"
+#define PORTS_BUILD_PAD ""
+#define PORTS_FOLDER    "PORTS"       /* (the stock firmware's, in the card's Roms) */
+#define PORTS_CARD      "Roms"
+#endif
 
 /* What PORTS is made of, and where it goes */
 typedef struct
@@ -43,7 +64,7 @@ typedef void (*ports_step)(void *context, const char *step);
 void ports_take_dropped(ports_inputs *inputs, const char *path);
 
 /* The inputs not given, beside the tool (in the folder 'here', with its separator): orunners.zip, the folder
-   anbernic, and PORTS beside it */
+   anbernic (r36s), and PORTS beside it */
 void ports_defaults(ports_inputs *inputs, const char *here);
 
 /* PORTS in the folder 'out': true when it is written. Each step's lines go to 'log' (the command line's)

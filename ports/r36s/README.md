@@ -14,17 +14,24 @@ Anbernic build ([ports/anbernic](../anbernic/README.md)) with what this handheld
   game and the sound board run every frame; the sound starts with 3 frames of silence queued, so a late frame
   does not leave the device without sound. Without it the game ran at 46-55 frames a second, slower than the
   arcade, its music broken up.
-- **Built for the Cortex-A35** (`-mcpu=cortex-a35`).
+- **Built for the Cortex-A35** (`-mcpu=cortex_a35`, Zig's name for it).
 
 On an R36S (ArkOS 07312025, PortMaster 2026.06.23) it runs at 60 frames a second, a quarter or so of the
 frames not drawn in a race, with the sound whole.
 
 ## Installing it (for players)
 
-1. Make `PORTS` with OutRunners Anbernic from your ROM set, as [ports/anbernic](../anbernic/README.md) says.
-2. Copy the folder `outrunners` and `OutRunners.sh` to the card's `ports` folder (the `EASYROMS` partition).
-3. Put this build's `OutRunners.sh` and `outrunners/OutRunners` over them.
-4. PortMaster must be installed (ArkOS has it). Start **Ports > OutRunners**.
+The release's package, `outrunners-VERSION-r36s.zip`, has the game without its assets in the folder `r36s`
+and beside it **OutRunners R36S**, the tool (for Windows, macOS and Linux) that makes the folder `ports` of it
+with your ROM set, as OutRunners Anbernic makes `PORTS` ([ports/anbernic](../anbernic/README.md)):
+
+1. Start OutRunners R36S where it was unpacked, drop `orunners.zip` on its window and choose the card's
+   `EASYROMS` partition as the output folder: `OutRunners.sh` and the folder `outrunners` (the game, the
+   controls' pictures and the assets pack of your ROM set) go into its `ports`, and the other ports there
+   stay as they are. Or from a command line: `OutRunners R36S --rom orunners.zip --out E:/`.
+2. PortMaster must be installed (ArkOS has it). Start **Ports > OutRunners**.
+
+The folder `outrunners` has the game's data in it: it is yours alone, never share it.
 
 What the game says goes to `outrunners/outrunners.log`: PortMaster's device, the mapping, and every 300
 frames the frames a second, how many were not drawn and the sound queued.
@@ -39,3 +46,10 @@ cmake --build build/r36s --target OutRunners
 ```
 
 It makes `build/bin/r36s/`: `OutRunners.sh` and `outrunners/OutRunners` (and `input_prompts.bmp`).
+OutRunners R36S is built with the computer's games (`build/bin/OutRunners R36S`): OutRunners Anbernic's
+sources (`ports/anbernic/maker`) with `ORUNNERS_R36S_MAKER`. Beside it, it finds this build in
+`build/bin/r36s` and writes `build/bin/ports`:
+
+```bash
+"build/bin/OutRunners R36S" --rom rom/orunners.zip
+```

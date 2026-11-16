@@ -1,10 +1,10 @@
 """
     Name:        pack_devices.py
     Description: the release's packages of the devices, one each (Sebas, 09-11-2026: not inside the
-                 computers' packages): outrunners-VERSION-switch.zip, -android.zip and -anbernic.zip, each the
-                 device's game without assets beside the tool that makes the player's game of it, for Windows,
-                 macOS and Linux
-    Version:     0.1.1
+                 computers' packages): outrunners-VERSION-switch.zip, -android.zip, -anbernic.zip and
+                 -r36s.zip, each the device's game without assets beside the tool that makes the player's game
+                 of it, for Windows, macOS and Linux
+    Version:     0.2.0
     Created:     09-11-2026
     Modified:    15-11-2026
     Author:      Sebastian Toyos
@@ -12,14 +12,15 @@
     license:BSD-3-Clause
     A package is a folder (outrunners-switch, ...) holding the device's README, the tool three times (its
     Windows .exe, and its macOS and Linux programs with the system in their names: the three sit beside the
-    device's folder, which each finds there), the device's game in its folder (switch, android, anbernic),
+    device's folder, which each finds there), the device's game in its folder (switch, android, anbernic, r36s),
     font.bmp (the tools' letters) and the licenses. The tools, font.bmp and the licenses come from each
     computer's kit (the CI's build job: dist/kit, packed as outrunners-OS-kit.tar.gz), given as a folder each
     under --kits: windows-x64, macos-universal and linux-x64. The zip keeps the programs' permissions (Unix
     entries), so that the macOS and Linux tools run as they are unpacked there. The zip's name carries the
     release's version (--version: v1.3.2, the CI's "dev" else), the folder in it does not.
 
-    python3 ports/pack_devices.py --kits DIR --switch DIR --android DIR --anbernic DIR [--version V] --out DIR
+    python3 ports/pack_devices.py --kits DIR --switch DIR --android DIR --anbernic DIR --r36s DIR [--version V]
+        --out DIR
 """
 import argparse
 import os
@@ -35,6 +36,7 @@ DEVICES = [
     ("switch", "OutRunners NSP", "README-switch.txt"),
     ("android", "OutRunners APK", "README-android.txt"),
     ("anbernic", "OutRunners Anbernic", "README-anbernic.txt"),
+    ("r36s", "OutRunners R36S", "README-r36s.txt"),
 ]
 
 # each computer's kit: its folder under --kits, the tool's name in it and in the package
@@ -100,11 +102,13 @@ def main():
     parser.add_argument("--switch", required=True, help="the Switch's game: main, main.npdm, control.nacp, icon.jpg")
     parser.add_argument("--android", required=True, help="Android's game: outrunners-base.apk")
     parser.add_argument("--anbernic", required=True, help="Anbernic's game: OutRunners.sh and outrunners/")
+    parser.add_argument("--r36s", required=True, help="the R36S's game: OutRunners.sh and outrunners/")
     parser.add_argument("--version", default="", help="the release's version in the zips' names (v1.3.2)")
     parser.add_argument("--out", required=True, help="where the zips go")
     arguments = parser.parse_args()
     os.makedirs(arguments.out, exist_ok=True)
-    games = {"switch": arguments.switch, "android": arguments.android, "anbernic": arguments.anbernic}
+    games = {"switch": arguments.switch, "android": arguments.android, "anbernic": arguments.anbernic,
+             "r36s": arguments.r36s}
     for device, tool, readme in DEVICES:
         pack(device, tool, readme, games[device], arguments.kits, arguments.out, arguments.version)
 

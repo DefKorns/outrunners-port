@@ -4,9 +4,9 @@
  *                 Anbernic build, the output folder), a ROM set dropped on it, a button for the output folder
  *                 and one (or Enter) that makes PORTS (OutRunners NSP's window, ports/switch/nsp/window.c,
  *                 with these rows)
- *    Version:     0.1.0
+ *    Version:     0.2.0
  *    Created:     30-10-2026
- *    Modified:    30-10-2026
+ *    Modified:    15-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
@@ -20,7 +20,8 @@
  *    it is closed then, it waits out of sight for PORTS to be written. Its letters are Kenney Mini's
  *    (ports/sdl2/letters.c, font.bmp beside the tool). SDL gives paths in UTF-8; on Windows they go to the
  *    C library in the system's code page. On Windows the console the tool is started with is closed when
- *    it is the tool's own (a double click), and kept when it is a command line's.
+ *    it is the tool's own (a double click), and kept when it is a command line's. Built with
+ *    ORUNNERS_R36S_MAKER it is OutRunners R36S's, with its names (make_ports.h).
  */
 #define SDL_MAIN_HANDLED    /* (the tool's main is main.c's, a console program's) */
 
@@ -39,7 +40,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define WINDOW_TITLE     "OutRunners Anbernic"
+#define WINDOW_TITLE     PORTS_TOOL
 #define WINDOW_WIDTH     800
 #define WINDOW_HEIGHT    384
 #define MARGIN           24
@@ -160,10 +161,10 @@ static void refresh(void)
 	ports_defaults(inputs, tool.here);
 	set_row(&tool.rows[0], "ROM set (orunners.zip: MAME's, World)", tool.given.rom[0] ? inputs->rom : BESIDE_TOOL,
 		ports_file_exists(inputs->rom) || ports_folder_exists(inputs->rom) ? NULL : "not found", "found");
-	set_row(&tool.rows[1], "The game's Anbernic build",
-		tool.given.build[0] ? inputs->build : "the folder anbernic, " BESIDE_TOOL, ports_build_problem(inputs->build),
+	set_row(&tool.rows[1], "The game's " PORTS_BUILD_OF " build",
+		tool.given.build[0] ? inputs->build : "the folder " PORTS_BUILD ", " BESIDE_TOOL, ports_build_problem(inputs->build),
 		"found");
-	set_row(&tool.rows[2], "Output folder (your card's Roms, or any)", tool.given.out[0] ? inputs->out : BESIDE_TOOL,
+	set_row(&tool.rows[2], "Output folder (your card's " PORTS_CARD ", or any)", tool.given.out[0] ? inputs->out : BESIDE_TOOL,
 		ports_folder_exists(inputs->out) ? NULL : "not found", PORTS_FOLDER " goes here");
 }
 
@@ -294,8 +295,8 @@ static void draw(void)
 		SDL_SetCursor(button_works(tool.hover) ? tool.hand : tool.arrow);
 	SDL_SetRenderDrawColor(tool.renderer, 16, 24, 64, 255);
 	SDL_RenderClear(tool.renderer);
-	letters_draw(tool.renderer, &tool.font, "OutRunners Anbernic", TITLE_TOP, 3, yellow, WINDOW_WIDTH);
-	letters_draw(tool.renderer, &tool.font, "The game for Anbernic's H700 handhelds, made of your own ROM set",
+	letters_draw(tool.renderer, &tool.font, PORTS_TOOL, TITLE_TOP, 3, yellow, WINDOW_WIDTH);
+	letters_draw(tool.renderer, &tool.font, "The game for " PORTS_HANDHELD ", made of your own ROM set",
 		TITLE_TOP + LETTERS_CELL * 3 + 12, 1, white, WINDOW_WIDTH);
 	for (int row = 0; row < ROWS; row++)
 	{
@@ -306,20 +307,20 @@ static void draw(void)
 		y += ROW_HEIGHT;
 	}
 	draw_button(FOLDER_BUTTON, tool.no_dialog ? "No folder dialog on this system" : "Choose the output folder");
-	draw_button(MAKE_BUTTON, tool.phase == MAKING ? "Making PORTS..." : "Make PORTS");
+	draw_button(MAKE_BUTTON, tool.phase == MAKING ? "Making " PORTS_FOLDER "..." : "Make " PORTS_FOLDER);
 
 	/* below the buttons: what it is doing, what it made or what failed */
 	if (tool.phase == MAKING)
 	{
 		const char *const step = (const char *)SDL_AtomicGetPtr(&tool.step);
 
-		snprintf(line, sizeof(line), "Making PORTS: %s", step ? step : "starting");
+		snprintf(line, sizeof(line), "Making " PORTS_FOLDER ": %s", step ? step : "starting");
 		first = line;
 		colour = yellow;
 	}
 	else if (tool.phase == MADE)
 	{
-		snprintf(line, sizeof(line), "PORTS is written (the assets pack: %.1f MB), for your card's Roms",
+		snprintf(line, sizeof(line), PORTS_FOLDER " is written (the assets pack: %.1f MB), for your card's " PORTS_CARD,
 			(double)tool.outcome.size / (1024.0 * 1024.0));
 		first = line;
 		second = tool.made_place;
@@ -339,7 +340,7 @@ static void draw(void)
 	else
 	{
 		first = "Drop orunners.zip on this window";
-		second = "Enter makes PORTS";
+		second = "Enter makes " PORTS_FOLDER;
 	}
 	letters_draw(tool.renderer, &tool.font, first, STATUS_TOP, 1, colour, WINDOW_WIDTH);
 	if (tool.phase == MAKING)
@@ -382,9 +383,9 @@ static void start_making(void)
 	tool.note[0] = '\0';
 	tool.started = SDL_GetTicks();
 	tool.phase = MAKING;
-	if (!(tool.thread = SDL_CreateThread(making_thread, "OutRunners Anbernic", NULL)))
+	if (!(tool.thread = SDL_CreateThread(making_thread, PORTS_TOOL, NULL)))
 	{
-		snprintf(tool.outcome.what, sizeof(tool.outcome.what), "Making PORTS cannot start");
+		snprintf(tool.outcome.what, sizeof(tool.outcome.what), "Making " PORTS_FOLDER " cannot start");
 		tool.phase = FAILED;
 	}
 }

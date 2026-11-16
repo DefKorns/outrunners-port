@@ -577,6 +577,18 @@ merged here; this repository adds console/, the ports and their documents.
   LT, RB, LB and Y, and with R2, L2, R1, L1 and a triangle; the devices' packer's names with and without
   --version. portable.txt and the log on Linux and macOS not tried (the CI builds them); a real DualSense
   not tried. The ROM set picked with a dialog waits for SDL3 (its branch).
+- The R36S on ArkOS (pull request 41, pauloedsfer's: ports/r36s, ORUNNERS_R36S with ORUNNERS_ANBERNIC): the
+  Anbernic build against glibc 2.30, PortMaster's launcher, SELECT + START leaving the game, and a frame past
+  its time not drawn (ORUNNERS_FRAMESKIP) so that the game and its sound keep their 60 a second on the RK3326.
+  Its package, outrunners-VERSION-r36s.zip, the release's seventh (Sebas: each device its own): the CI's
+  anbernic job builds both handhelds (a matrix), and OutRunners R36S, OutRunners Anbernic's sources with
+  ORUNNERS_R36S_MAKER, makes the folder ports for the card's EASYROMS of the folder r36s beside it (the same
+  files and assets pack as PORTS, the launcher PortMaster's); docs/package/README-r36s.txt. The release job
+  takes the computers' packages and the devices' zips alone (the Anbernic's and the R36S's games have files
+  of the same names). Checked on Windows: both builds compile with Zig (glibc 2.29 at most and 2.34), OutRunners
+  Anbernic's texts the same as before, OutRunners R36S's ports with the R36S's launcher and game and the same
+  assets pack as OutRunners Anbernic's, the packer's seven zips. Tried on an R36S by its author; the package on
+  one not tried.
 ## To do
 
 - REVERSE's finish (AUSTRALIA's at the pre-stage): the pair of kangaroos under the riders at each side of

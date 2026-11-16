@@ -1,14 +1,17 @@
 /**
  *    Name:        main.c
  *    Description: OutRunners Anbernic: the game for Anbernic's H700 handhelds as the folder PORTS for their
- *                 card, made on the player's computer from the game's Anbernic build and the player's ROM set
- *    Version:     0.1.0
+ *                 card, made on the player's computer from the game's Anbernic build and the player's ROM set;
+ *                 built with ORUNNERS_R36S_MAKER, OutRunners R36S: the folder ports for the R36S's card (ArkOS),
+ *                 of the game's R36S build
+ *    Version:     0.2.0
  *    Created:     30-10-2026
- *    Modified:    30-10-2026
+ *    Modified:    15-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
  *    Usage: OutRunners Anbernic [--rom FILE] [--anbernic FOLDER] [--out FOLDER]
+ *           OutRunners R36S [--rom FILE] [--r36s FOLDER] [--out FOLDER]
  *
  *    PORTS is made in make_ports.c. By default the ROM set is beside the tool, the game's Anbernic build in the
  *    folder anbernic beside it, and PORTS is written beside it. A file dropped on the tool is the ROM set
@@ -70,28 +73,29 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[at], "--rom") == 0)
 			target = inputs.rom;
-		else if (strcmp(argv[at], "--anbernic") == 0)
+		else if (strcmp(argv[at], "--" PORTS_BUILD) == 0)
 			target = inputs.build;
 		else if (strcmp(argv[at], "--out") == 0)
 			target = inputs.out;
 		if (!target || at + 1 >= argc)
 		{
-			fprintf(stderr, "Usage: OutRunners Anbernic [--rom FILE] [--anbernic FOLDER] [--out FOLDER]\n"
+			fprintf(stderr, "Usage: " PORTS_TOOL " [--rom FILE] [--" PORTS_BUILD " FOLDER] [--out FOLDER]\n"
 				"  --rom       the arcade ROM set (orunners.zip, MAME's, World; by default beside it)\n"
-				"  --anbernic  the game's Anbernic build: OutRunners.sh and the folder outrunners (by default\n"
-				"              anbernic beside it)\n"
-				"  --out       the folder PORTS goes in: your card's Roms, or any (by default beside it)\n");
+				"  --" PORTS_BUILD PORTS_BUILD_PAD "  the game's " PORTS_BUILD_OF " build: OutRunners.sh and the folder outrunners (by default\n"
+				"              " PORTS_BUILD " beside it)\n"
+				"  --out       the folder " PORTS_FOLDER " goes in: your card's " PORTS_CARD ", or any (by default beside it)\n");
 			return 2;
 		}
 		snprintf(target, PORTS_PATH_SIZE, "%s", argv[++at]);
 	}
-	printf("OutRunners Anbernic: the game for Anbernic's H700 handhelds, with the assets of your ROM set\n\n");
+	printf(PORTS_TOOL ": the game for " PORTS_HANDHELD ", with the assets of your ROM set\n\n");
 	ports_defaults(&inputs, here);
 	if (!make_ports(&inputs, stdout, NULL, NULL, &outcome))
 	{
 		fprintf(stderr, "%s%s%s\n", outcome.what, outcome.detail[0] ? ": " : "", outcome.detail);
 		return finish(1);
 	}
-	printf("\nCopy PORTS into Roms on your handheld's card (or merge it with the PORTS there).\n");
+	printf("\nCopy " PORTS_FOLDER " into " PORTS_CARD " on your handheld's card (or merge it with the " PORTS_FOLDER
+		" there).\n");
 	return finish(0);
 }

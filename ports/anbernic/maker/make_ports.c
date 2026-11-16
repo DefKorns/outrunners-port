@@ -2,14 +2,17 @@
  *    Name:        make_ports.c
  *    Description: OutRunners Anbernic's work: the folder PORTS for an Anbernic H700 handheld's card, made from
  *                 the game's Anbernic build and the player's ROM set (for the command line and the window
- *                 alike)
- *    Version:     0.1.0
+ *                 alike); built with ORUNNERS_R36S_MAKER, OutRunners R36S's: the folder ports for the R36S's
+ *                 card, of the game's R36S build
+ *    Version:     0.2.0
  *    Created:     30-10-2026
- *    Modified:    30-10-2026
+ *    Modified:    15-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
- *    PORTS is what the stock firmware's Roms/PORTS takes: the launcher OutRunners.sh and beside it the folder
+ *    PORTS is what the stock firmware's Roms/PORTS takes (OutRunners R36S's ports, what ArkOS's ports takes,
+ *    at the top of the card's EASYROMS, the same files: its launcher is PortMaster's, ports/r36s): the
+ *    launcher OutRunners.sh and beside it the folder
  *    outrunners, with the game, CONTROLS' button pictures and the assets pack, which the tool makes from the
  *    player's orunners.zip as the computer's first run does (ports/switch/nsp/rom_pack.c). Written in the
  *    folder the player picks: beside the tool, or the card's Roms itself; the other ports already in a PORTS
@@ -106,7 +109,7 @@ void ports_defaults(ports_inputs *inputs, const char *here)
 	if (!inputs->rom[0])
 		snprintf(inputs->rom, sizeof(inputs->rom), "%sorunners.zip", here);
 	if (!inputs->build[0])
-		snprintf(inputs->build, sizeof(inputs->build), "%sanbernic", here);
+		snprintf(inputs->build, sizeof(inputs->build), "%s" PORTS_BUILD, here);
 	if (!inputs->out[0])
 		snprintf(inputs->out, sizeof(inputs->out), "%s", here);
 }
@@ -169,10 +172,10 @@ int make_ports(const ports_inputs *inputs, FILE *log, ports_step step, void *con
 
 	memset(outcome, 0, sizeof(*outcome));
 
-	/* the game's Anbernic build */
-	tell(step, context, "reading the game's Anbernic build");
+	/* the game's Anbernic (R36S) build */
+	tell(step, context, "reading the game's " PORTS_BUILD_OF " build");
 	if (ports_build_problem(inputs->build) != NULL)
-		return failed(outcome, "The game's Anbernic build is not whole", inputs->build);
+		return failed(outcome, "The game's " PORTS_BUILD_OF " build is not whole", inputs->build);
 	if (log)
 		fprintf(log, "game      %s\n", inputs->build);
 
@@ -180,7 +183,7 @@ int make_ports(const ports_inputs *inputs, FILE *log, ports_step step, void *con
 	joined(inputs->out, PORTS_FOLDER, ports, sizeof(ports));
 	joined(ports, GAME_FOLDER, game, sizeof(game));
 	if (!folder_made(ports) || !folder_made(game))
-		return failed(outcome, "The folder PORTS cannot be made", ports);
+		return failed(outcome, "The folder " PORTS_FOLDER " cannot be made", ports);
 
 	/* the assets, as the computer's first run takes them out, under a name of their own until they are
 	   whole: a game already there stays as it was when the ROM set cannot be used */

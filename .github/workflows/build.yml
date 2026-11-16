@@ -3,14 +3,15 @@
 #              Windows with MSVC), SDL2 inside the executables, and packs what a player runs: the window
 #              ports, OutRunners Arcade and OutRunners, which take their assets out of the player's ROM set
 #              on their first run; the Nintendo Switch's .nsp pieces with devkitPro's toolchain, Android's game
-#              without a pack with the NDK and Anbernic's handhelds' game with Zig, each in a package of its own
-#              (Sebas, 09-11-2026: not inside the computers' packages) beside the tool that makes the player's
-#              .nsp, APK or PORTS of it, for the three computers; with their licenses. A tag v* makes a release
-#              of those six packages. It runs on main, its pull requests and the tags v* alone (Sebas,
-#              30-10-2026: not on the other branches); by hand on any branch. And on the newest Ubuntu, as the
-#              README builds there (its GCC, Python and SDL2). The computers' packages carry recomplauncher.json
-#              beside the games: RecompLauncher sets the game up from it (the ROM set, its settings)
-# Version:     0.3.1
+#              without a pack with the NDK and Anbernic's handhelds' game and the R36S's (ArkOS) with Zig, each in
+#              a package of its own (Sebas, 09-11-2026: not inside the computers' packages) beside the tool that
+#              makes the player's .nsp, APK, PORTS or ports of it, for the three computers; with their licenses.
+#              A tag v* makes a release of those seven packages. It runs on main, its pull requests and the
+#              tags v* alone (Sebas, 30-10-2026: not on the other branches); by hand on any branch. And on the
+#              newest Ubuntu, as the README builds there (its GCC, Python and SDL2). The computers' packages
+#              carry recomplauncher.json beside the games: RecompLauncher sets the game up from it (the ROM set,
+#              its settings)
+# Version:     0.4.0
 # Created:     27-10-2026
 # Modified:    15-11-2026
 # Author:      Sebastian Toyos
@@ -83,7 +84,7 @@ jobs:
       # MAME's and ymfm's (BSD-3: the board's libraries follow their behavior and tables), SDL2's (zlib) and
       # Kenney's (CC0: the letters of the windows, the controls' pictures), and the package's README.
       # The .apps are signed ad hoc (no certificate): macOS then offers to open them anyway, where a bundle
-      # signed in part is "damaged". The devices' tools (OutRunners NSP, APK, Anbernic) go to the kit, with
+      # signed in part is "damaged". The devices' tools (OutRunners NSP, APK, Anbernic, R36S) go to the kit, with
       # font.bmp and the licenses, for the devices' packages (the job devices)
       - name: Pack
         shell: bash
@@ -91,8 +92,8 @@ jobs:
           mkdir -p dist/outrunners/licenses dist/kit
           for file in build/bin/*; do
             case "$(basename "$file")" in
-              *headless*|*.pdb|*.ilk|*.exp|*.lib|*.a|switch|android|anbernic) ;;
-              "OutRunners NSP"*|"OutRunners APK"*|"OutRunners Anbernic"*) cp "$file" dist/kit/ ;;
+              *headless*|*.pdb|*.ilk|*.exp|*.lib|*.a|switch|android|anbernic|r36s) ;;
+              "OutRunners NSP"*|"OutRunners APK"*|"OutRunners Anbernic"*|"OutRunners R36S"*) cp "$file" dist/kit/ ;;
               *) cp -R "$file" dist/outrunners/ ;;
             esac
           done
@@ -189,9 +190,20 @@ jobs:
           path: build/bin/android/outrunners-base.apk    # (the game alone: not the runner's own APK beside it)
 
   # Anbernic's H700 handhelds: PORTS's files without the assets (build/bin/anbernic), built with Zig for the
-  # stock firmware's glibc and against its SDL2 (SDL's headers from its source; ports/anbernic/anbernic.cmake)
+  # stock firmware's glibc and against its SDL2 (SDL's headers from its source; ports/anbernic/anbernic.cmake);
+  # and the same for the R36S on ArkOS (build/bin/r36s: its glibc 2.30, PortMaster's launcher; ports/r36s)
   anbernic:
-    name: anbernic
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: anbernic
+            toolchain: ports/anbernic/zig_aarch64.cmake
+            device: ''
+          - name: r36s
+            toolchain: ports/r36s/zig_aarch64.cmake
+            device: -DORUNNERS_R36S=ON
+    name: ${{ matrix.name }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -209,25 +221,25 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -S . -B build/anbernic -G Ninja -DCMAKE_BUILD_TYPE=Release -DORUNNERS_REFERENCE_TOOLS=OFF \
-            -DCMAKE_TOOLCHAIN_FILE=ports/anbernic/zig_aarch64.cmake -DORUNNERS_ANBERNIC=ON \
+          cmake -S . -B build/${{ matrix.name }} -G Ninja -DCMAKE_BUILD_TYPE=Release -DORUNNERS_REFERENCE_TOOLS=OFF \
+            -DCMAKE_TOOLCHAIN_FILE=${{ matrix.toolchain }} -DORUNNERS_ANBERNIC=ON ${{ matrix.device }} \
             -DORUNNERS_SDL2_INCLUDE="$PWD/build/downloads/sdl2-source/SDL2-2.32.10/include"
 
       - name: Build
-        run: cmake --build build/anbernic --target OutRunners --parallel
+        run: cmake --build build/${{ matrix.name }} --target OutRunners --parallel
 
       - uses: actions/upload-artifact@v7
         with:
-          name: outrunners-anbernic
-          path: build/bin/anbernic/
+          name: outrunners-${{ matrix.name }}
+          path: build/bin/${{ matrix.name }}/
 
-  # The devices' packages (ports/pack_devices.py): outrunners-VERSION-switch.zip, -android.zip and
-  # -anbernic.zip, each the device's game beside its tool for Windows, macOS and Linux (the
+  # The devices' packages (ports/pack_devices.py): outrunners-VERSION-switch.zip, -android.zip, -anbernic.zip
+  # and -r36s.zip, each the device's game beside its tool for Windows, macOS and Linux (the
   # computers' kits), font.bmp, the licenses and its README (docs/package)
   devices:
     name: devices
     runs-on: ubuntu-24.04
-    needs: [build, switch, android, anbernic]
+    needs: [build, switch, android, anbernic]    # (anbernic: the Anbernic's game and the R36S's)
     steps:
       - uses: actions/checkout@v7
 
@@ -245,6 +257,11 @@ jobs:
         with:
           name: outrunners-anbernic
           path: devices/anbernic
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: outrunners-r36s
+          path: devices/r36s
 
       - uses: actions/download-artifact@v8
         with:
@@ -268,7 +285,7 @@ jobs:
             tar xzf "computers/$computer/outrunners-$computer-kit.tar.gz" -C "kits/$computer"
           done
           python3 ports/pack_devices.py --kits kits --switch devices/switch --android devices/android \
-            --anbernic devices/anbernic --version "$VERSION" --out dist
+            --anbernic devices/anbernic --r36s devices/r36s --version "$VERSION" --out dist
 
       - uses: actions/upload-artifact@v7
         with:
@@ -316,11 +333,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # the computers' packages (outrunners-OS-ARCH) and the devices' zips, in one folder: not the devices'
+      # games, which have files of the same names (the Anbernic's and the R36S's OutRunners.sh)
       - uses: actions/download-artifact@v8
         with:
-          pattern: outrunners-*
+          pattern: outrunners-*-*
           path: dist
           merge-multiple: true
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: outrunners-devices
+          path: dist
 
       - name: Release
         env:
@@ -330,4 +354,5 @@ jobs:
             --title "OutRunners $GITHUB_REF_NAME" --notes-file "docs/releases/$GITHUB_REF_NAME.md" \
             "dist/outrunners-$VERSION-windows-x64.zip" "dist/outrunners-$VERSION-linux-x64.tar.gz" \
             "dist/outrunners-$VERSION-macos-universal.zip" "dist/outrunners-$VERSION-switch.zip" \
-            "dist/outrunners-$VERSION-android.zip" "dist/outrunners-$VERSION-anbernic.zip"
+            "dist/outrunners-$VERSION-android.zip" "dist/outrunners-$VERSION-anbernic.zip" \
+            "dist/outrunners-$VERSION-r36s.zip"
