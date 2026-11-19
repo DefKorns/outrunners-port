@@ -13,7 +13,7 @@ window when it asks for it.
 The games
 ---------
 OutRunners           the console version: one screen, a menu (ARCADE, 2 PLAYERS, NETWORK, & KNUCKLES with
-                     CLASSIC, TIME ATTACK, FULL and REVERSE, OPTIONS), WIDE 16:9 and 20:9, the pause, game
+                     CLASSIC, TIME ATTACK, FULL and REVERSE, OPTIONS), WIDE up to 21:9, the pause, game
                      controllers and keys set in OPTIONS > CONTROLS
 OutRunners Arcade    the arcade game as it is, both cabinet screens side by side
 

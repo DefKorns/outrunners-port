@@ -1,9 +1,9 @@
 /**
  *    Name:        console.h
  *    Description: what the console build tells the port
- *    Version:     0.1.5
+ *    Version:     0.1.6
  *    Created:     29-10-2026
- *    Modified:    15-11-2026
+ *    Modified:    19-11-2026
  *    Author:      Sebastian Toyos
  */
 #ifndef ORUNNERS_CONSOLE_H
@@ -173,18 +173,23 @@ enum
 	                       outrunners.ini keeps the number) */
 	WIDE_AUTO,          /* the one the screen's shape asks for (console_set_screen_wide): a computer's default, a
 	                       Steam Deck's 16:10 in its hands and 16:9 on a TV (issue 40) */
+	WIDE_21_9,          /* 108 more at each side (S32_VIDEO_WIDE_SIDE_21_9): an ultrawide monitor's (issue 44; after
+	                       AUTO: outrunners.ini keeps the number) */
 	WIDE_KINDS
 };
 
 #define CONSOLE_NAME_LENGTH 8    /* the player's name, NETWORK > NAME: letters of the game's font */
 
 /* OPTIONS > STEERING: the sticks' dead zone (percent of their travel, in steps of DEAD_ZONE_STEP), and the
-   sticks' sensitivity and the keys' and pads' speed (1 to STEERING_LEVELS, STEERING_NORMAL the game's own) */
+   sticks' sensitivity and the keys' and pads' speed (1 to STEERING_LEVELS, STEERING_NORMAL the game's own);
+   past the speed's last level, STEERING_SPEED_INSTANT: the wheel all the way at once while a key or a pad
+   holds it, and at the centre at once when let go (issue 45: a keyboard's keys as a digital pad's) */
 #define DEAD_ZONE_STEP      5
 #define DEAD_ZONE_MOST      50
 #define DEAD_ZONE_NORMAL    10
 #define STEERING_LEVELS     9
 #define STEERING_NORMAL     5
+#define STEERING_SPEED_INSTANT (STEERING_LEVELS + 1)
 
 /* OPTIONS > STEERING's WHEEL ROTATION: a racing wheel's turn from end to end, in degrees, as its driver has it;
    the game's wheel turns all the way at WHEEL_ROTATION_GAME's (the arcade's; a stick's whole travel), the rest
@@ -216,7 +221,7 @@ typedef struct
 	int dead_zone;         /* STEERING: DEAD_ZONE_* */
 	int sensitivity;       /* STEERING: the sticks', STEERING_LEVELS */
 	int wheel_rotation;    /* STEERING: a racing wheel's, one of console_wheel_rotations */
-	int steering_speed;    /* STEERING: the keys' and pads', STEERING_LEVELS */
+	int steering_speed;    /* STEERING: the keys' and pads', STEERING_LEVELS or STEERING_SPEED_INSTANT */
 	int centring;          /* STEERING: a racing wheel's spring, percent (FORCE_STEP) */
 	int vibration;         /* STEERING: the wheel motor's shake or rumble, percent (FORCE_STEP) */
 	bool phone_vibration;  /* STEERING (Android's): the phone itself vibrates too, for its touch controls */

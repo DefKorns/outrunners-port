@@ -589,7 +589,52 @@ merged here; this repository adds console/, the ports and their documents.
   Anbernic's texts the same as before, OutRunners R36S's ports with the R36S's launcher and game and the same
   assets pack as OutRunners Anbernic's, the packer's seven zips. Tried on an R36S by its author; the package on
   one not tried.
+
+## Done (19-11-2026)
+
+- A racing wheel's spring gone a couple of bends into a race, the shake still there (issue 46, a Logitech
+  G920): the spring was run once, for a length that is not for ever on Windows nor on macOS (SDL gives it in
+  microseconds in 32 bits: SDL_HAPTIC_INFINITY * 1000, 71 minutes, of which a wheel's driver may keep less),
+  while the shake is run again each time the motor starts. The effects are run over and over
+  (SDL_HAPTIC_INFINITY times) and the spring is looked after (forces.c, keep_spring): run again within a
+  second where the device says it is not playing, every 10 seconds whatever it says, and on the first frame
+  after the game was held. Checked on Windows with a fake haptic (the spring's runs counted over the frames:
+  made once, run again at 600 and 1200 frames, within 60 of a status of not playing, on the frame after a
+  hold; a wheel with no status and an autocentre one). On a wheel not tried: the G920's cause is what SDL's
+  source says of the length, not seen on one.
+- OPTIONS > STEERING > SPEED's INSTANT, past 9 (issue 45): the keys' and the pads' wheel all the way at once
+  while one holds it and at the centre at once when let go (STEERING_SPEED_INSTANT, outrunners.ini's
+  steering_speed=10; 9 takes 11 frames to the end). Checked: the page shows < INSTANT > after 9 and 1 after
+  it (the headless's frames); the wheel's jump in a race not tried.
+- 2 PLAYERS with WIDE on: each screen's place in the window was as wide as WIDE's (398 or 496) and its 320
+  sat between black bars, both smaller than the screen had room for (issue 44: a small box each on a 21:9
+  monitor). The places are the board's 320 in 2 PLAYERS (screen_width). Checked on Windows, WIDE 16:9: the
+  window 796 x 448 at the title, 1280 x 448 in 2 PLAYERS, both screens edge to edge (keys posted to the
+  window, PrintWindow). The touch layouts and the devices not tried.
+- WIDE 21:9 (issue 44: 20:9 left a bar of 4% at each side of a 3440 x 1440 monitor): 108 columns more at
+  each side, frames of 536 (S32_VIDEO_WIDE_SIDE_21_9, S32_VIDEO_MAX_WIDTH; the video's WIDE is the port's, the
+  decompilation's runtime has none), shown whole (3440 x 1440 is 535 columns, 2560 x 1080 is 531). WIDE_21_9
+  after AUTO (outrunners.ini's wide=5; wide_width_kind where the kinds were tested as under AUTO); VIDEO's
+  WIDE goes AUTO, OFF, 16:10, 16:9, 20:9, 21:9; a computer's AUTO takes it where the screen is 2.3 times as
+  wide as high or more (a 32:9 one has it between bars), Android's stays at 20:9; the headless's --wide-21-9;
+  recomplauncher.json's choice. A layer is 512 columns a page: where the game's scenery is one page with
+  nothing beside it, its end is in sight sooner than at 20:9 (FULL's frame 3500: the mesa's left edge 14
+  columns in, 6 outside 20:9's view), as 20:9 shows it when the view turns.
+  Checked on Windows: the 31 courses of tests/console/full.txt at 21:9 and at 20:9, a frame every 2000 (64):
+  the middle 496 columns of each the same as 20:9's, the sides looked at one by one; the title, OPTIONS and its
+  pages, the car's choice and ARCADE's start at 21:9; the window 1072 x 448 with wide=5; 4000 frames of ARCADE
+  at 4:3, 16:10, 16:9 and 20:9 with the same hashes as a build of 496; the arcade's 16 scenarios identical. Not
+  tried: an ultrawide monitor (AUTO's choice is by the numbers: 3440 x 1440 and 2560 x 1080 21:9, 2400 x 1080
+  20:9), the route's map and the ending at 21:9, Linux and macOS.
+- 32:9, tried in the headless with the widest frame at 796 (not kept): the road and the ground go on, the
+  roadside's sprites end where the game stops placing them and the layers' scenery is cut and comes round
+  again. See To do.
+
 ## To do
+
+- 32:9 (issue 44): for one player it would need each stage's scenery drawn further out than the game places
+  it; for 2 PLAYERS side by side it is 16:9 a screen, which needs WIDE in 2 PLAYERS (today both screens are the
+  board's 320).
 
 - REVERSE's finish (AUSTRALIA's at the pre-stage): the pair of kangaroos under the riders at each side of
   the road (scenery_pair 02E1A6) is drawn nearer the middle than at AUSTRALIA, behind the crowd (its

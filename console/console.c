@@ -2,9 +2,9 @@
  *    Name:        console.c
  *    Description: the console build's own versions of the game functions console/replaced.txt lists, and
  *                 what it tells the port
- *    Version:     0.1.4
+ *    Version:     0.1.5
  *    Created:     29-10-2026
- *    Modified:    15-11-2026
+ *    Modified:    19-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
@@ -470,9 +470,15 @@ void console_attach(void)
 
 static int screen_wide;    /* WIDE AUTO's, as the port says the screen is (WIDE_OFF till it does) */
 
+/* A WIDE of a width of its own (not OFF, not AUTO), else WIDE_OFF */
+static int wide_width_kind(int kind)
+{
+	return kind > WIDE_OFF && kind < WIDE_KINDS && kind != WIDE_AUTO ? kind : WIDE_OFF;
+}
+
 void console_set_screen_wide(int kind)
 {
-	screen_wide = kind > WIDE_OFF && kind < WIDE_AUTO ? kind : WIDE_OFF;
+	screen_wide = wide_width_kind(kind);
 }
 
 int console_wide_in_effect(void)
@@ -481,7 +487,7 @@ int console_wide_in_effect(void)
 
 	if (wide == WIDE_AUTO)
 		return screen_wide;
-	return wide > WIDE_OFF && wide < WIDE_AUTO ? wide : WIDE_OFF;
+	return wide_width_kind(wide);
 }
 
 int console_wide_side(void)
@@ -493,6 +499,7 @@ int console_wide_side(void)
 		case WIDE_16_10: return S32_VIDEO_WIDE_SIDE_16_10;
 		case WIDE_16_9: return S32_VIDEO_WIDE_SIDE_16_9;
 		case WIDE_20_9: return S32_VIDEO_WIDE_SIDE_20_9;
+		case WIDE_21_9: return S32_VIDEO_WIDE_SIDE_21_9;
 		default: return 0;
 	}
 }

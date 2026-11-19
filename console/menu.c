@@ -2,9 +2,9 @@
  *    Name:        menu.c
  *    Description: the console's menus on the left seat's screen: PRESS START in the attract mode, the title's
  *                 menu, DELUXE, NETWORK with its rooms, and OPTIONS with its pages
- *    Version:     0.1.4
+ *    Version:     0.1.5
  *    Created:     29-10-2026
- *    Modified:    15-11-2026
+ *    Modified:    19-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
@@ -81,9 +81,9 @@ static const char name_letters[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-";
 static const char *const time_stages[TIME_STAGES] = { "PRE-STAGE", "STAGE 1", "STAGE 2", "STAGE 3", "STAGE 4",
 	"FINAL STAGE" };
 static const char *const pixel_kinds[PIXELS_KINDS] = { "SHARP", "SMOOTH", "BILINEAR", "CRT" };
-static const char *const wide_kinds[WIDE_KINDS] = { "OFF", "16:9", "20:9", "16:10", "AUTO" };
+static const char *const wide_kinds[WIDE_KINDS] = { "OFF", "16:9", "20:9", "16:10", "AUTO", "21:9" };
 /* WIDE's values as VIDEO goes through them: AUTO, then the narrowest first */
-static const int wide_order[WIDE_KINDS] = { WIDE_AUTO, WIDE_OFF, WIDE_16_10, WIDE_16_9, WIDE_20_9 };
+static const int wide_order[WIDE_KINDS] = { WIDE_AUTO, WIDE_OFF, WIDE_16_10, WIDE_16_9, WIDE_20_9, WIDE_21_9 };
 static const char *const control_names[CONTROLS] = { "STEER LEFT", "STEER RIGHT", "GAS", "BRAKE", "SHIFT UP",
 	"SHIFT DOWN", "MUSIC", "SONG <<", "SONG >>", "START" };
 /* the test mode's GAME DIFFICULTY, from EASY to HARD on its bar of 8 (the fourth, the game's own) */
@@ -606,7 +606,7 @@ static void steering_frame(uint32_t pressed)
 			window->changed = true;
 			break;
 		case STEERING_SPEED:
-			window->steering_speed = step(window->steering_speed, by, 1, STEERING_LEVELS);
+			window->steering_speed = step(window->steering_speed, by, 1, STEERING_SPEED_INSTANT);
 			window->changed = true;
 			break;
 #ifndef ORUNNERS_HANDHELD
@@ -657,7 +657,10 @@ static void steering_frame(uint32_t pressed)
 	force_value(value, sizeof(value), window->centring);
 	line(STEERING_CENTRING, "CENTRING", value);
 #endif
-	snprintf(value, sizeof(value), "< %d >", window->steering_speed);
+	if (window->steering_speed == STEERING_SPEED_INSTANT)
+		snprintf(value, sizeof(value), "< INSTANT >");
+	else
+		snprintf(value, sizeof(value), "< %d >", window->steering_speed);
 	line(STEERING_SPEED, "SPEED", value);
 	force_value(value, sizeof(value), window->vibration);
 	line(STEERING_VIBRATION, "VIBRATION", value);

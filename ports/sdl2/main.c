@@ -2,9 +2,9 @@
  *    Name:        main.c
  *    Description: the game in a window: SDL2 shows its screens, plays its sound, reads the controls and
  *                 keeps the pace, around the same game and board the headless runs check
- *    Version:     0.1.4
+ *    Version:     0.1.5
  *    Created:     21-10-2026
- *    Modified:    15-11-2026
+ *    Modified:    19-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
@@ -336,15 +336,18 @@ static bool screens_stacked(void)
 }
 
 /* The window's picture, in the game's pixels: its screens side by side, or one over the other */
-/* A screen's picture, in the game's pixels: 320, or with the console's WIDE 16:10, 16:9 or 20:9 */
+/* A screen's picture, in the game's pixels: 320, or with the console's WIDE 16:10, 16:9, 20:9 or 21:9 */
 #define WIDE_16_10_WIDTH 358   /* 16:10 at 224 rows (358.4): the video's 384 less 13 at each side */
 #define WIDE_16_9_WIDTH 398    /* 16:9 at 224 rows: the video's 416 less 9 at each side */
 #define WIDE_20_9_WIDTH 496    /* the video's 496, whole (20:9 is 498) */
+#define WIDE_21_9_WIDTH 536    /* the video's 536, whole (3440 x 1440 is 535, 2560 x 1080 is 531) */
 
 static int screen_width(void)
 {
 #ifdef ORUNNERS_CONSOLE
-	const int wide = console_wide_in_effect();
+	/* (2 PLAYERS: each screen the board's 320, console_wide_side; as wide as WIDE's they sat between black bars,
+	   smaller than the window had room for: issue 44) */
+	const int wide = screens_shown() == 2 ? WIDE_OFF : console_wide_in_effect();
 
 	if (wide == WIDE_16_10)
 		return WIDE_16_10_WIDTH;
@@ -352,6 +355,8 @@ static int screen_width(void)
 		return WIDE_16_9_WIDTH;
 	if (wide == WIDE_20_9)
 		return WIDE_20_9_WIDTH;
+	if (wide == WIDE_21_9)
+		return WIDE_21_9_WIDTH;
 #endif
 	return 320;
 }
@@ -378,14 +383,19 @@ static void picture_size(int *width, int *height)
 #if defined(WIDE_BY_SCREEN) || defined(WIDE_AUTO_BY_SCREEN)
 static int shape_width, shape_height;    /* the screen WIDE was last chosen for */
 
-/* WIDE for a screen of 'width' x 'height' (either way up: its long side across): 20:9 where it is twice as wide
-   as high or more, 16:9 from 16:9 on, 16:10 from 3:2 on; a narrower one's none, the game's 4:3 picture filling
-   it (a 4:3 handheld's: issue 15), but a tablet's 16:9, the picture at the top and the controls and the route
-   map under it (an open Fold's: Sebas) */
+/* WIDE for a screen of 'width' x 'height' (either way up: its long side across): on a computer 21:9 where it is
+   2.3 times as wide as high or more (an ultrawide monitor's 2560 x 1080 or 3440 x 1440, issue 44; a wider one
+   has it between black bars); 20:9 where it is twice as wide as high or more, 16:9 from 16:9 on, 16:10 from 3:2
+   on; a narrower one's none, the game's 4:3 picture filling it (a 4:3 handheld's: issue 15), but a tablet's
+   16:9, the picture at the top and the controls and the route map under it (an open Fold's: Sebas) */
 static int wide_for_screen(int width, int height)
 {
 	const int long_side = SDL_max(width, height), short_side = SDL_min(width, height);
 
+#ifdef WIDE_AUTO_BY_SCREEN
+	if (10 * long_side >= 23 * short_side)
+		return WIDE_21_9;
+#endif
 	if (long_side >= 2 * short_side)
 		return WIDE_20_9;
 #ifdef ORUNNERS_TOUCH
@@ -399,7 +409,8 @@ static int wide_for_screen(int width, int height)
 
 static const char *wide_name(int wide)
 {
-	return wide == WIDE_20_9 ? "20:9" : wide == WIDE_16_9 ? "16:9" : wide == WIDE_16_10 ? "16:10" : "OFF";
+	return wide == WIDE_21_9 ? "21:9" : wide == WIDE_20_9 ? "20:9" : wide == WIDE_16_9 ? "16:9" : wide == WIDE_16_10 ? "16:10"
+		: "OFF";
 }
 #endif
 
@@ -1140,7 +1151,7 @@ static void load_window_settings(void)
 		else if (sscanf(line, "full_screen=%d", &number) == 1)
 			settings->full_screen = number != 0;
 		else if (sscanf(line, "wide=%d", &number) == 1 && number >= 0 && number < WIDE_KINDS)
-			settings->wide = number;    /* (0 off, 1 16:9, 2 20:9, 3 16:10, 4 AUTO) */
+			settings->wide = number;    /* (0 off, 1 16:9, 2 20:9, 3 16:10, 4 AUTO, 5 21:9) */
 		else if (sscanf(line, "vsync=%d", &number) == 1)
 			settings->vsync = number != 0;
 		else if (sscanf(line, "volume=%d", &number) == 1 && number >= 0 && number <= 10)
@@ -1153,7 +1164,7 @@ static void load_window_settings(void)
 			settings->dead_zone = number / DEAD_ZONE_STEP * DEAD_ZONE_STEP;
 		else if (sscanf(line, "sensitivity=%d", &number) == 1 && number >= 1 && number <= STEERING_LEVELS)
 			settings->sensitivity = number;
-		else if (sscanf(line, "steering_speed=%d", &number) == 1 && number >= 1 && number <= STEERING_LEVELS)
+		else if (sscanf(line, "steering_speed=%d", &number) == 1 && number >= 1 && number <= STEERING_SPEED_INSTANT)
 			settings->steering_speed = number;
 		else if (sscanf(line, "centring=%d", &number) == 1 && number >= 0 && number <= 100)
 			settings->centring = number / FORCE_STEP * FORCE_STEP;
@@ -1546,7 +1557,8 @@ static int clamp(int value, int low, int high)
 }
 
 /* the keyboard's wheel: turned while a key holds it, back to the centre when let go; the console's at
-   OPTIONS > STEERING's SPEED (STEERING_NORMAL: WHEEL_TURN and WHEEL_RETURN) */
+   OPTIONS > STEERING's SPEED (STEERING_NORMAL: WHEEL_TURN and WHEEL_RETURN), or with its INSTANT all the way
+   at once and at the centre at once (issue 45) */
 static int steer(int position, bool left, bool right)
 {
 #ifdef ORUNNERS_CONSOLE
@@ -1556,6 +1568,10 @@ static int steer(int position, bool left, bool right)
 #endif
 	const int back = WHEEL_RETURN * turn / WHEEL_TURN;
 
+#ifdef ORUNNERS_CONSOLE
+	if (console_window_settings.steering_speed == STEERING_SPEED_INSTANT)
+		return left == right ? WHEEL_CENTRE : (right ? WHEEL_RIGHT : WHEEL_LEFT);
+#endif
 	if (left != right)
 		return clamp(position + (right ? turn : -turn), WHEEL_LEFT, WHEEL_RIGHT);
 	if (position < WHEEL_CENTRE)

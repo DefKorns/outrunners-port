@@ -2,9 +2,9 @@
  *    Name:        forces.c
  *    Description: the forces the controllers give back: a racing wheel's centring spring, and the cabinet's
  *                 wheel motor as a wheel's shake, a game controller's rumble or a phone's vibration
- *    Version:     0.1.1
+ *    Version:     0.1.2
  *    Created:     06-11-2026
- *    Modified:    07-11-2026
+ *    Modified:    19-11-2026
  *    Author:      Sebastian Toyos
  *
  *    license:BSD-3-Clause
@@ -25,6 +25,12 @@
  *    so with CENTRING at 0 and VIBRATION at 0 the haptic is not opened at all and the wheel is as its driver
  *    leaves it. The effects go along the wheel's one axis (SDL_HAPTIC_CARTESIAN, 1: DirectInput takes no polar
  *    direction for a device of one axis).
+ *    An effect that lasts for ever (SDL_HAPTIC_INFINITY) does not on Windows nor on macOS: SDL gives its length
+ *    there in microseconds in 32 bits (length * 1000: 71 minutes), and a wheel's driver may keep less of it (a
+ *    Logitech G920's spring was gone a couple of bends into a race, issue 46). So the effects are run over and over
+ *    (SDL_HAPTIC_INFINITY times), and the spring is looked after: once a second where the device says it is not
+ *    playing (SDL_HAPTIC_STATUS), and every SPRING_RENEW frames whatever it says, it is run again, as after the
+ *    game was held (the frames here stop then).
  *
  *    A player with no game controller plays on the device itself (a phone's touch controls): the device's own
  *    vibrator, which SDL lists on Android as a haptic of its own named VIBRATOR_SERVICE (rumble only), vibrates
@@ -39,7 +45,9 @@
 
 #define FORCES_PLAYERS 2
 #define SHAKE_PERIOD   40     /* ms: the shake's, 25 a second */
-#define RUMBLE_SPAN    100    /* ms: a rumble asked for each frame while the motor runs, lasting past the next */
+#define SPRING_WATCH   60     /* frames: the spring's status asked for once a second... */
+#define SPRING_RENEW   600    /* ...and the spring run again every 10 seconds */
+#define RUMBLE_SPAN    100   /* ms: a rumble asked for each frame while the motor runs, lasting past the next */
 #define VIBRATOR_NAME  "VIBRATOR_SERVICE"    /* the device's own, as SDL's Android haptics name it */
 #define VIBRATOR_SPAN  250    /* ms: a phone's vibration asked for at once... */
 #define VIBRATOR_RENEW 10     /* ...and again after this many frames (167 ms), before it ends */
@@ -52,6 +60,8 @@ typedef struct
 	unsigned int kinds;      /* the haptic's effects (SDL_HAPTIC_*) */
 	int spring;              /* the spring effect, or -1 */
 	int centring;            /* the spring's strength (percent), as asked of the haptic */
+	int spring_frames;       /* since the spring was last run */
+	bool spring_ended;       /* the spring found not playing (said once in the log) */
 	int sine;                /* the shake's effect, or -1 */
 	int shake;               /* its strength (percent), as asked of the haptic */
 	bool shaking;            /* the shake running */
@@ -78,6 +88,8 @@ static void forget(player_forces *forces)
 	forces->kinds = 0;
 	forces->spring = -1;
 	forces->centring = 0;
+	forces->spring_frames = 0;
+	forces->spring_ended = false;
 	forces->sine = -1;
 	forces->shake = 0;
 	forces->shaking = false;
@@ -179,11 +191,39 @@ static void centre(player_forces *forces, int centring)
 			return;
 		}
 		forces->spring = SDL_HapticNewEffect(forces->haptic, &effect);
-		if (forces->spring < 0 || SDL_HapticRunEffect(forces->haptic, forces->spring, 1) != 0)
+		forces->spring_frames = 0;
+		if (forces->spring < 0 || SDL_HapticRunEffect(forces->haptic, forces->spring, SDL_HAPTIC_INFINITY) != 0)
 			fprintf(stderr, "forces: the spring: %s\n", SDL_GetError());
 	}
 	else if (forces->kinds & SDL_HAPTIC_AUTOCENTER)
 		SDL_HapticSetAutocenter(forces->haptic, centring);
+}
+
+/* The spring kept running (an effect's length ends on Windows and on macOS, above): run again where the device
+   says it is not playing, and every SPRING_RENEW frames whatever it says */
+static void keep_spring(player_forces *forces)
+{
+	bool ended = false;
+
+	if (forces->spring < 0)
+		return;
+	forces->spring_frames++;
+	if (forces->spring_frames < SPRING_RENEW)
+	{
+		if (forces->spring_frames % SPRING_WATCH != 0 || !(forces->kinds & SDL_HAPTIC_STATUS))
+			return;
+		if (SDL_HapticGetEffectStatus(forces->haptic, forces->spring) != 0)
+			return;    /* (playing, or the device would not say) */
+		ended = true;
+	}
+	if (ended && !forces->spring_ended)
+	{
+		fprintf(stderr, "forces: the spring had ended: run again\n");
+		forces->spring_ended = true;
+	}
+	forces->spring_frames = 0;
+	if (SDL_HapticRunEffect(forces->haptic, forces->spring, SDL_HAPTIC_INFINITY) != 0 && ended)
+		fprintf(stderr, "forces: the spring: %s\n", SDL_GetError());
 }
 
 /* The shake at 'shake' percent while 'on', stopped otherwise */
@@ -210,7 +250,7 @@ static void shake_wheel(player_forces *forces, int shake, bool on)
 			fprintf(stderr, "forces: the shake: %s\n", SDL_GetError());
 	}
 	if (forces->sine >= 0 && !forces->shaking)
-		forces->shaking = SDL_HapticRunEffect(forces->haptic, forces->sine, 1) == 0;
+		forces->shaking = SDL_HapticRunEffect(forces->haptic, forces->sine, SDL_HAPTIC_INFINITY) == 0;
 }
 
 /* A game controller's rumble at 'shake' percent while 'on' (each frame, to last past the next), stopped
@@ -268,7 +308,10 @@ void forces_frame(int player, SDL_GameController *pad, int centring, int shake, 
 	if (!forces->looked)
 		look(forces, joystick);
 	if (forces->haptic)
+	{
 		centre(forces, centring);
+		keep_spring(forces);
+	}
 	if (forces->haptic && (forces->kinds & SDL_HAPTIC_SINE))
 		shake_wheel(forces, shake, motor && shake > 0);
 	else
@@ -331,6 +374,8 @@ void forces_hold(void)
 		if (forces->shaking)
 			shake_wheel(forces, forces->shake, false);
 		forces->rumbling = false;    /* (a rumble ends by itself, RUMBLE_SPAN after the last frame's) */
+		if (forces->spring >= 0)
+			forces->spring_frames = SPRING_RENEW - 1;    /* (run again as the game goes on: keep_spring) */
 	}
 	if (vibrator.haptic)
 		stop_vibrator();
