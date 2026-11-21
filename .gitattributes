@@ -8,4 +8,5 @@
 
 # The Hakchi game for the NES and SNES Classic is read on the console: LF
 ports/classicmini/clvg/* text eol=lf
+ports/classicmini/clvg/*.png binary
 ports/classicmini/*.sh text eol=lf
